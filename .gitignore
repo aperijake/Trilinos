@@ -164,3 +164,4 @@ rsync.*
 # clangd server stuff
 .cache/
 compile_commands.json
+build-linux-ubuntu24.04-*

@@ -603,7 +603,6 @@ class DeviceBucketRepository
 
     buckets.resize(buckets.num_active_entries());
 
-    sync_buckets_to_device(rank);
     Kokkos::Profiling::popRegion();
 
     return bucketShifts;
@@ -815,7 +814,6 @@ class DeviceBucketRepository
             }
           }
         }
-        m_deviceBucketsView[rank] = Kokkos::View<DeviceBucket*, NgpMemSpace>();
       }
     ))
   }
@@ -960,7 +958,6 @@ class DeviceBucketRepository
     m_partitions[rank] = partitionBuffer;
 
     copy_device_part_rank_info_from_host();
-    sync_buckets_to_device(rank);
     Kokkos::Profiling::popRegion();
   }
 
@@ -968,25 +965,6 @@ class DeviceBucketRepository
   unsigned get_max_num_parts_per_entity(EntityViewType const& entities) const;
 
   void sync_to_host(BucketRepository& hostBucketRepo);
-
-  void sync_buckets_to_device(EntityRank rank)
-  {
-    const auto count = m_buckets[rank].size();
-    if (count == 0) {
-      m_deviceBucketsView[rank] = Kokkos::View<DeviceBucket*, NgpMemSpace>();
-      return;
-    }
-    if (m_deviceBucketsView[rank].extent(0) != count) {
-      m_deviceBucketsView[rank] = Kokkos::View<DeviceBucket*, NgpMemSpace>(
-          Kokkos::view_alloc("DeviceBucketsDevice", Kokkos::WithoutInitializing), count);
-    }
-    const size_t numBytes = count * sizeof(DeviceBucket);
-    Kokkos::View<const char*, stk::ngp::UVMMemSpace, Kokkos::MemoryTraits<Kokkos::Unmanaged>>
-        srcBytes(reinterpret_cast<const char*>(m_buckets[rank].data()), numBytes);
-    Kokkos::View<char*, NgpMemSpace, Kokkos::MemoryTraits<Kokkos::Unmanaged>>
-        dstBytes(reinterpret_cast<char*>(m_deviceBucketsView[rank].data()), numBytes);
-    Kokkos::deep_copy(dstBytes, srcBytes);
-  }
 
   void update_bucket_ptrs_in_partitions(EntityRank rank)
   {
@@ -1104,7 +1082,6 @@ class DeviceBucketRepository
   DeviceMeshT<NgpMemSpace>* m_mesh;
 
   DeviceBucketViewVector m_buckets[stk::topology::NUM_RANKS];
-  Kokkos::View<DeviceBucket*, NgpMemSpace> m_deviceBucketsView[stk::topology::NUM_RANKS];
   DevicePartitionViewVector m_partitions[stk::topology::NUM_RANKS];
 
   // TODO Refactor to use a proper device side part (either DevicePart or a device copyable Part)

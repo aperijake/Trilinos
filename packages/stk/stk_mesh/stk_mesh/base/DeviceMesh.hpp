@@ -293,23 +293,13 @@ public:
   KOKKOS_FUNCTION
   unsigned num_buckets(stk::mesh::EntityRank rank) const
   {
-    KOKKOS_IF_ON_HOST((
-      return m_deviceBucketRepo.num_buckets(rank);
-    ))
-    KOKKOS_IF_ON_DEVICE((
-      return m_deviceBucketRepo.m_deviceBucketsView[rank].extent(0);
-    ))
+    return m_deviceBucketRepo.num_buckets(rank);
   }
 
   KOKKOS_FUNCTION
   const DeviceBucketT<NgpMemSpace> &get_bucket(stk::mesh::EntityRank rank, unsigned index) const
   {
-    KOKKOS_IF_ON_HOST((
-      return m_deviceBucketRepo.m_buckets[rank][index];
-    ))
-    KOKKOS_IF_ON_DEVICE((
-      return m_deviceBucketRepo.m_deviceBucketsView[rank](index);
-    ))
+    return m_deviceBucketRepo.m_buckets[rank][index];
   }
 
   KOKKOS_FUNCTION
@@ -326,10 +316,8 @@ public:
 
   void clear()
   {
-    for(stk::mesh::EntityRank rank=stk::topology::NODE_RANK; rank<stk::topology::NUM_RANKS; rank++) {
-      m_deviceBucketRepo.m_buckets[rank].clear();
-      m_deviceBucketRepo.m_deviceBucketsView[rank] = Kokkos::View<DeviceBucketT<NgpMemSpace>*, NgpMemSpace>();
-    }
+    for(stk::mesh::EntityRank rank=stk::topology::NODE_RANK; rank<stk::topology::NUM_RANKS; rank++)
+      m_deviceBucketRepo.m_buckets[rank] = BucketView();
   }
 
   stk::mesh::BulkData &get_bulk_on_host()
@@ -639,6 +627,7 @@ private:
 
   void increment_synchronized_count() { ++synchronizedCount; }
 
+  using BucketView = Kokkos::View<DeviceBucketT<NgpMemSpace>*, stk::ngp::UVMMemSpace>;
   stk::mesh::BulkData* bulk;
   unsigned spatial_dimension;
   unsigned lastBulkDataSynchronizedCount;
