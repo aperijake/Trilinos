@@ -206,3 +206,13 @@ else()
   
 endif()
 
+if(HAVE_STK_Trilinos)
+  TRIBITS_ADD_EXECUTABLE(stk_hip_slowdown_reproducer
+    SOURCES HipSlowdownReproducer.cpp
+    NOEXEPREFIX
+  )
+else()
+  add_executable(stk_hip_slowdown_reproducer HipSlowdownReproducer.cpp)
+  target_link_libraries(stk_hip_slowdown_reproducer stk_unit_test_utils stk_mesh_base stk_io)
+endif()
+
